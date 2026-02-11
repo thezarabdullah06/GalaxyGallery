@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Interactive Photo Galaxy</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #000;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-size: 14px;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">Drag to rotate the view</div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        // Scene, Camera, Renderer
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Background: Black with twinkling stars
+        const starGeometry = new THREE.BufferGeometry();
+        const starCount = 1000;
+        const starPositions = new Float32Array(starCount * 3);
+        const starColors = new Float32Array(starCount * 3);
+        for (let i = 0; i < starCount; i++) {
+            starPositions[i * 3] = (Math.random() - 0.5) * 2000;
+            starPositions[i * 3 + 1] = (Math.random() - 0.5) * 2000;
+            starPositions[i * 3 + 2] = (Math.random() - 0.5) * 2000;
+            starColors[i * 3] = Math.random();
+            starColors[i * 3 + 1] = Math.random();
+            starColors[i * 3 + 2] = Math.random();
+        }
+        starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+        starGeometry.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
+        const starMaterial = new THREE.PointsMaterial({ size: 1, vertexColors: true, transparent: true });
+        const stars = new THREE.Points(starGeometry, starMaterial);
+        scene.add(stars);
+
+        // Central Planet: Glowing purple-pink sphere
+        const planetGeometry = new THREE.SphereGeometry(2, 32, 32);
+        const planetMaterial = new THREE.MeshBasicMaterial({
+            color: 0xff00ff,
+            emissive: 0x880088,
+            transparent: true,
+            opacity: 0.8
+        });
+        const planet = new THREE.Mesh(planetGeometry, planetMaterial);
+        scene.add(planet);
+
+        // Orbiting Photo Frames: 25 planes with placeholder images
+        const photoGroup = new THREE.Group();
+        const photoCount = 25;
+        const radius = 10;
+        for (let i = 0; i < photoCount; i++) {
+            const angle = (i / photoCount) * Math.PI * 2;
+            const x = Math.cos(angle) * radius;
+            const z = Math.sin(angle) * radius;
+            const y = (Math.random() - 0.5) * 4; // Slight vertical variation
+
+            const planeGeometry = new THREE.PlaneGeometry(2, 3);
+            const texture = new THREE.TextureLoader().load('https://picsum.photos/200/300?random=' + i);
+            const planeMaterial = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
+            const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+            plane.position.set(x, y, z);
+            plane.lookAt(0, 0, 0); // Face the center
+            photoGroup.add(plane);
+        }
+        scene.add(photoGroup);
+
+        // Camera position
+        camera.position.set(0, 5, 15);
+
+        // OrbitControls for interactivity
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Rotate the photo group for orbiting effect
+            photoGroup.rotation.y += 0.005;
+
+            // Twinkle stars
+            const colors = starGeometry.attributes.color.array;
+            for (let i = 0; i < starCount; i++) {
+                colors[i * 3] = Math.random() * 0.5 + 0.5; // Red
+                colors[i * 3 + 1] = Math.random() * 0.5 + 0.5; // Green
+                colors[i * 3 + 2] = Math.random() * 0.5 + 0.5; // Blue
+            }
+            starGeometry.attributes.color.needsUpdate = true;
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Handle window resize for responsiveness
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
